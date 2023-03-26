@@ -12,7 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	ioamapi "github.com/Advanced-Observability/ioam-agent-go/ioam_api"
+	ioamapi "github.com/jbiggley/clt-go"
 )
 
 const (
