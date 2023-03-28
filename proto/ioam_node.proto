@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "opaque.proto";
+
+message IOAMNode {
+    uint32  HopLimit          = 1;
+    uint32  Id                = 2;
+    uint32  IngressId         = 3;
+    uint32  EgressId          = 4;
+    uint32  TimestampSecs     = 5;
+    uint32  TimestampFrac     = 6;
+    uint32  TransitDelay      = 7;
+    uint32  QueueDepth        = 8;
+    uint32  CsumComp          = 9;
+    uint32  BufferOccupancy   = 10;
+    uint32  IngressIdWide     = 11;
+    uint32  EgressIdWide      = 12;
+    uint64  IdWide            = 13;
+    bytes   NamespaceData     = 14;   // 4-octet field
+    bytes   NamespaceDataWide = 15;   // 8-octet field
+    Opaque  OSS               = 16;
+}
