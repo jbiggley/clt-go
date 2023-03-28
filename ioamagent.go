@@ -1,4 +1,4 @@
-package main
+package ioamagent
 
 import (
 	"context"
@@ -60,47 +60,47 @@ func parseNodeData(p []byte, ttype uint32) (*ioamapi.IOAMNode, error) {
 	return node, nil
 }
 
-// parseIOAMTrace extracts IOAM trace data from the packet
+
 func parseIOAMTrace(p []byte) (*ioamapi.IOAMTrace, error) {
-	// Extract relevant fields from the packet
-	ns, nodelen, _, remlen, ttype, _, tid, sid := unpackPacket(p[:32])
+    // Extract relevant fields from the packet
+    ns, nodelen, _, remlen, ttype, _, tid, sid := unpackPacket(p[:32])
 
-	nodes := []*ioamapi.IOAMNode{}
-	i := 32 + remlen*4
+    nodes := make([]*ioamapi.IOAMNode, 0, len(p)/(nodelen*4))
 
-	for i < len(p) {
-		node, err := parseNodeData(p[i:i+nodelen*4], ttype)
-		if err != nil {
-			return nil, err
-		}
-		i += nodelen * 4
+    for i := 32 + remlen*4; i < len(p); {
+        node, err := parseNodeData(p[i:i+nodelen*4], ttype)
+        if err != nil {
+            return nil, err
+        }
+        i += nodelen * 4
 
-		// Handle TRACE_TYPE_BIT22_MASK if present
-		if ttype&TRACE_TYPE_BIT22_MASK != 0 {
-			opaqueLen := p[i]
-			node.OSS = &ioamapi.OpaqueStateSnapshot{
-				SchemaId: uint32(binary.BigEndian.Uint32(p[i:i+4]) & 0x00FFFFFF),
-			}
-			if opaqueLen > 0 {
-				node.OSS.Data = p[i+4 : i+4+int(opaqueLen)*4]
-			}
-			i += 4 + int(opaqueLen)*4
-		}
+        // Handle TRACE_TYPE_BIT22_MASK if present
+        if ttype&TRACE_TYPE_BIT22_MASK != 0 {
+            opaqueLen := p[i]
+            node.OSS = &ioamapi.OpaqueStateSnapshot{
+                SchemaId: uint32(binary.BigEndian.Uint32(p[i:i+4]) & 0x00FFFFFF),
+            }
+            if opaqueLen > 0 {
+                node.OSS.Data = p[i+4 : i+4+int(opaqueLen)*4]
+            }
+            i += 4 + int(opaqueLen)*4
+        }
 
-		nodes = append(nodes, node)
-	}
+        nodes = append(nodes, node)
+    }
 
-	trace := &ioamapi.IOAMTrace{
-		BitField:    ttype << 8,
-		NamespaceId: ns,
-		TraceIdHigh: tid >> 64,
-		TraceIdLow:  tid & 0x0000000000000000FFFFFFFFFFFFFFFF,
-		SpanId:      sid,
-		Nodes:       nodes,
-	}
+    trace := &ioamapi.IOAMTrace{
+        BitField:    ttype << 8,
+        NamespaceId: ns,
+        TraceIdHigh: tid >> 64,
+        TraceIdLow:  tid & 0x0000000000000000FFFFFFFFFFFFFFFF,
+        SpanId:      sid,
+        Nodes:       nodes,
+    }
 
-	return trace, nil
+    return trace, nil
 }
+
 
 func main() {
 	interfaceName := flag.String("i", "", "Interface to listen on")
@@ -109,31 +109,24 @@ func main() {
 	flag.Parse()
 
 	if *interfaceName == "" {
-		fmt.Println("Error: Interface not specified")
-		flag.Usage()
-		os.Exit(1)
+		log.Fatal("Interface not specified")
+	}
+	if !*output && *collector == "" {
+		log.Fatal("IOAM collector address not specified")
 	}
 
 	// Set up the socket to listen for IOAM packets
 	conn, err := net.ListenPacket("ip6:"+fmt.Sprintf("%04x", ETH_P_IPV6), *interfaceName)
 	if err != nil {
-		fmt.Printf("Error: Failed to open socket on interface %s\n", *interfaceName)
-		os.Exit(1)
+		log.Fatalf("Failed to open socket on interface %s: %v", *interfaceName, err)
 	}
 	defer conn.Close()
 
 	var stub ioamapi.IOAMServiceClient
 	if !*output {
-		if *collector == "" {
-			fmt.Println("Error: IOAM collector address not specified")
-			flag.Usage()
-			os.Exit(1)
-		}
-
 		cc, err := grpc.Dial(*collector, grpc.WithInsecure())
 		if err != nil {
-			fmt.Printf("Error: Failed to connect to IOAM collector at %s\n", *collector)
-			os.Exit(1)
+			log.Fatalf("Failed to connect to IOAM collector at %s: %v", *collector, err)
 		}
 		defer cc.Close()
 
@@ -145,13 +138,12 @@ func main() {
 	for {
 		n, _, err := conn.ReadFrom(buf)
 		if err != nil {
-			fmt.Printf("Error: Failed to read packet: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Failed to read packet: %v", err)
 		}
 
 		trace, err := parseIOAMTrace(buf[:n])
 		if err != nil {
-			fmt.Printf("Error: Failed to parse packet: %v\n", err)
+			log.Printf("Failed to parse packet: %v", err)
 			continue
 		}
 
@@ -160,7 +152,7 @@ func main() {
 		} else {
 			_, err := stub.Report(context.Background(), trace)
 			if err != nil {
-				fmt.Printf("Error: Failed to report trace to IOAM collector: %v\n", err)
+				log.Printf("Failed to report trace to IOAM collector: %v", err)
 			}
 		}
 	}

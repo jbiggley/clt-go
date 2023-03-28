@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+import "opaque.proto";
+import "ioam_node.proto";
+
+message IOAMTrace {
+    fixed64     TraceId_High        = 1;
+    fixed64     TraceId_Low         = 2;
+    fixed64     SpanId              = 3;
+    uint32      NamespaceId         = 4;
+    fixed32     BitField            = 5;
+    repeated    IOAMNode  Nodes     = 6;
+}

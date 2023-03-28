@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message Opaque {
+    uint32  SchemaId    = 1;
+    bytes   Data        = 2;    // variable length field
+}
