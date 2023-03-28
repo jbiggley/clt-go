@@ -51,20 +51,20 @@ func NewCollector() *collector {
 	}
 }
 
-func (c *collector) Report(grpc_ctx context.Context, request *ioam_api.IOAMTrace) (*emptypb.Empty, error) {
-	var traceID trace.TraceID
+func (c *collector) Report(ctx context.Context, request *ioam_api.IOAMTrace) (*emptypb.Empty, error) {
+	traceID := trace.TraceID{}
 	binary.BigEndian.PutUint64(traceID[:8], request.GetTraceId_High())
 	binary.BigEndian.PutUint64(traceID[8:], request.GetTraceId_Low())
 
-	var spanID trace.SpanID
+	spanID := trace.SpanID{}
 	binary.BigEndian.PutUint64(spanID[:], request.GetSpanId())
 
-	span_ctx := trace.NewSpanContext(trace.SpanContextConfig{
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
 		TraceID:    traceID,
 		SpanID:     spanID,
 		TraceFlags: trace.FlagsSampled,
 	})
-	ctx := trace.ContextWithSpanContext(context.Background(), span_ctx)
+	ctx = trace.ContextWithSpanContext(ctx, spanCtx)
 
 	tracer := otel.Tracer("ioam-tracer")
 	_, span := tracer.Start(ctx, "ioam-span")
@@ -77,11 +77,12 @@ func (c *collector) Report(grpc_ctx context.Context, request *ioam_api.IOAMTrace
 		str := c.parseNode(node, request.GetBitField())
 
 		span.SetAttributes(attribute.String(key, str))
-		i += 1
+		i++
 	}
 
 	return empty_inst, nil
 }
+
 
 func (c *collector) parseNode(node *ioam_api.IOAMNode, fields uint32) string {
 str := ""
