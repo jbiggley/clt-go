@@ -84,51 +84,44 @@ func (c *collector) Report(ctx context.Context, request *ioam_api.IOAMTrace) (*e
 }
 
 
+type field struct {
+	name   string
+	format string
+	value  uint64
+}
+
+func (f field) toString() string {
+	return fmt.Sprintf(f.format, f.value)
+}
+
 func (c *collector) parseNode(node *ioam_api.IOAMNode, fields uint32) string {
-str := ""
-if (fields & MASK_BIT0) != 0 {
-	str += "HopLimit=" + strconv.FormatUint(uint64(node.GetHopLimit()), 10) + "; "
-	str += "Id=" + strconv.FormatUint(uint64(node.GetId()), 10) + "; "
-}
-if (fields & MASK_BIT1) != 0 {
-	str += "IngressId=" + strconv.FormatUint(uint64(node.GetIngressId()), 10) + "; "
-	str += "EgressId=" + strconv.FormatUint(uint64(node.GetEgressId()), 10) + "; "
-}
-if (fields & MASK_BIT2) != 0 {
-	str += "TimestampSecs=" + strconv.FormatUint(uint64(node.GetTimestampSecs()), 10) + "; "
-}
-if (fields & MASK_BIT3) != 0 {
-	str += "TimestampFrac=" + strconv.FormatUint(uint64(node.GetTimestampFrac()), 10) + "; "
-}
-if (fields & MASK_BIT4) != 0 {
-	str += "TransitDelay=" + strconv.FormatUint(uint64(node.GetTransitDelay()), 10) + "; "
-}
-if (fields & MASK_BIT5) != 0 {
-	str += "NamespaceData=0x" + hex.EncodeToString(node.GetNamespaceData()) + "; "
-}
-if (fields & MASK_BIT6) != 0 {
-	str += "QueueDepth=" + strconv.FormatUint(uint64(node.GetQueueDepth()), 10) + "; "
-}
-if (fields & MASK_BIT7) != 0 {
-	str += "CsumComp=" + strconv.FormatUint(uint64(node.GetCsumComp()), 10) + "; "
-}
-if (fields & MASK_BIT8) != 0 {
-	str += "HopLimit=" + strconv.FormatUint(uint64(node.GetHopLimit()), 10) + "; "
-	str += "IdWide=" + strconv.FormatUint(uint64(node.GetIdWide()), 10) + "; "
-}
-if (fields & MASK_BIT9) != 0 {
-	str += "IngressIdWide=" + strconv.FormatUint(uint64(node.GetIngressIdWide()), 10) + "; "
-	str += "EgressIdWide=" + strconv.FormatUint(uint64(node.GetEgressIdWide()), 10) + "; "
-}
-if (fields & MASK_BIT10) != 0 {
-	str += "NamespaceDataWide=0x" + hex.EncodeToString(node.GetNamespaceDataWide()) + "; "
-}
-if (fields & MASK_BIT11) != 0 {
-	str += "BufferOccupancy=" + strconv.FormatUint(uint64(node.GetBufferOccupancy()), 10) + "; "
-}
-if (fields & MASK_BIT22) != 0 {
-	str += "OpaqueStateSchemaId=" + strconv.FormatUint(uint64(node.GetOSS().GetSchemaId()), 10) + "; "
-	str += "OpaqueStateData=0x" + hex.EncodeToString(node.GetOSS().GetData()) + "; "
+	var fieldsToParse = []field{
+		{name: "HopLimit", format: "HopLimit=%d; ", value: uint64(node.GetHopLimit())},
+		{name: "Id", format: "Id=%d; ", value: uint64(node.GetId())},
+		{name: "IngressId", format: "IngressId=%d; ", value: uint64(node.GetIngressId())},
+		{name: "EgressId", format: "EgressId=%d; ", value: uint64(node.GetEgressId())},
+		{name: "TimestampSecs", format: "TimestampSecs=%d; ", value: uint64(node.GetTimestampSecs())},
+		{name: "TimestampFrac", format: "TimestampFrac=%d; ", value: uint64(node.GetTimestampFrac())},
+		{name: "TransitDelay", format: "TransitDelay=%d; ", value: uint64(node.GetTransitDelay())},
+		{name: "NamespaceData", format: "NamespaceData=0x%s; ", value: uint64(node.GetNamespaceData())},
+		{name: "QueueDepth", format: "QueueDepth=%d; ", value: uint64(node.GetQueueDepth())},
+		{name: "CsumComp", format: "CsumComp=%d; ", value: uint64(node.GetCsumComp())},
+		{name: "IdWide", format: "IdWide=%d; ", value: uint64(node.GetIdWide())},
+		{name: "IngressIdWide", format: "IngressIdWide=%d; ", value: uint64(node.GetIngressIdWide())},
+		{name: "EgressIdWide", format: "EgressIdWide=%d; ", value: uint64(node.GetEgressIdWide())},
+		{name: "NamespaceDataWide", format: "NamespaceDataWide=0x%s; ", value: uint64(node.GetNamespaceDataWide())},
+		{name: "BufferOccupancy", format: "BufferOccupancy=%d; ", value: uint64(node.GetBufferOccupancy())},
+		{name: "OpaqueStateSchemaId", format: "OpaqueStateSchemaId=%d; ", value: uint64(node.GetOSS().GetSchemaId())},
+		{name: "OpaqueStateData", format: "OpaqueStateData=0x%s; ", value: uint64(node.GetOSS().GetData())},
+	}
+
+	var str strings.Builder
+	for _, f := range fieldsToParse {
+		if (fields & c.mask[1<<31]) != 0 {
+			str.WriteString(f.toString())
+		}
+	}
+	return str.String()
 }
 
 return str
